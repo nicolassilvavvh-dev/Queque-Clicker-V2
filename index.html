@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Queque Clicker: Imperio Pastelero</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font: Fredoka -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Fredoka', cursive, sans-serif;
+            background: radial-gradient(circle, #fff5ed 0%, #fae1d0 100%);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Animación del Queque (Bounce / Squish) */
+        .cake-btn {
+            transition: transform 0.08s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            cursor: pointer;
+            touch-action: manipulation;
+        }
+
+        .cake-btn:active,
+        .cake-btn.clicked {
+            transform: scale(0.88, 0.82) rotate(-2deg);
+        }
+
+        /* Ripple Effect */
+        @keyframes ripple-anim {
+            0% {
+                transform: translate(-50%, -50%) scale(0.2);
+                opacity: 0.9;
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(4.5);
+                opacity: 0;
+            }
+        }
+
+        .ripple-effect {
+            position: absolute;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(255, 182, 193, 0.6) 60%, rgba(255, 255, 255, 0) 100%);
+            pointer-events: none;
+            animation: ripple-anim 0.55s ease-out forwards;
+            z-index: 20;
+        }
+
+        /* Texto flotante (+X Queques) */
+        @keyframes float-up {
+            0% {
+                opacity: 1;
+                transform: translate(-50%, 0) scale(1);
+            }
+
+            50% {
+                transform: translate(-50%, -40px) scale(1.15);
+            }
+
+            100% {
+                opacity: 0;
+                transform: translate(-50%, -80px) scale(0.9);
+            }
+        }
+
+        .float-text {
+            position: absolute;
+            pointer-events: none;
+            font-weight: 700;
+            animation: float-up 0.85s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+            z-index: 30;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Queque Dorado flotante */
+        @keyframes float-golden {
+            0% {
+                transform: translateY(0px) rotate(0deg);
+            }
+
+            50% {
+                transform: translateY(-20px) rotate(10deg);
+            }
+
+            100% {
+                transform: translateY(0px) rotate(-10deg);
+            }
+        }
+
+        .golden-cake-anim {
+            animation: float-golden 2.5s ease-in-out infinite alternate;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #fce8db;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #e5989b;
+            border-radius: 10px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #b56576;
+        }
+
+        /* Shimmer Effect para items raros */
+        .shimmer {
+            background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+
+            100% {
+                background-position: 200% 0;
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen text-amber-950 flex flex-col justify-between overflow-x-hidden">
+
+    <!-- TOP HEADER -->
+    <header class="bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300 text-white shadow-md p-4 sticky top-0 z-40">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <div class="text-3xl animate-bounce">🎂</div>
+                <div>
+                    <h1 class="text-2xl font-bold tracking-wide drop-shadow">Queque Clicker</h1>
+                    <p class="text-xs text-pink-950/80 font-medium">¡Construye el imperio de repostería más dulce!</p>
+                </div>
+            </div>
+
+            <!-- Quick Stats & Actions -->
+            <div class="flex items-center gap-3">
+                <button id="sound-toggle-btn" onclick="toggleAudio()"
+                    class="bg-white/20 hover:bg-white/30 backdrop-blur text-white px-3 py-1.5 rounded-full text-sm font-semibold transition flex items-center gap-1.5 shadow-sm">
+                    <span id="sound-icon">🔊</span> <span id="sound-text">Sonido: ON</span>
+                </button>
+                <button onclick="saveGame(true)"
+                    class="bg-amber-800/20 hover:bg-amber-800/30 backdrop-blur text-white px-3 py-1.5 rounded-full text-sm font-semibold transition shadow-sm">
+                    💾 Guardar
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN APP CONTAINER -->
+    <main class="max-w-6xl mx-auto w-full p-4 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 my-2">
+
+        <!-- LEFT COLUMN: MAIN CLICKER ZONE (Lg: 5 cols) -->
+        <section
+            class="lg:col-span-5 flex flex-col items-center justify-start bg-white/70 backdrop-blur-md rounded-3xl p-6 shadow-xl border border-pink-100 relative">
+
+            <!-- Multiplier Banner Badge -->
+            <div id="multiplier-badge"
+                class="hidden mb-3 w-full bg-gradient-to-r from-amber-400 to-orange-500 text-white text-center font-bold py-1.5 px-4 rounded-full text-sm shadow-md animate-pulse">
+                🔥 Multiplicador Activo: <span id="mult-val">x2</span> (<span id="mult-timer">15</span>s)
+            </div>
+
+            <!-- Total Currency Display -->
+            <div class="text-center my-2">
+                <span class="text-xs uppercase tracking-widest text-pink-700 font-bold">Total de Queques</span>
+                <div class="flex items-center justify-center gap-2">
+                    <span class="text-3xl">🧁</span>
+                    <h2 id="queque-count" class="text-4xl md:text-5xl font-extrabold text-amber-900 tracking-tight">0
+                    </h2>
+                </div>
+            </div>
+
+            <!-- Secondary Stats (Q/s & Q/click) -->
+            <div class="flex gap-4 my-3 text-center">
+                <div class="bg-pink-100/80 border border-pink-200 px-4 py-2 rounded-2xl">
+                    <p class="text-xs text-pink-800 font-semibold">Por Segundo (Q/s)</p>
+                    <p id="qps-count" class="text-lg font-bold text-pink-950">0</p>
+                </div>
+                <div class="bg-amber-100/80 border border-amber-200 px-4 py-2 rounded-2xl">
+                    <p class="text-xs text-amber-800 font-semibold">Por Clic (Q/c)</p>
+                    <p id="qpc-count" class="text-lg font-bold text-amber-950">1</p>
+                </div>
+            </div>
+
+            <!-- THE BIG INTERACTIVE QUEQUE CONTAINER -->
+            <div id="cake-area"
+                class="relative w-64 h-64 md:w-72 md:h-72 my-6 flex items-center justify-center select-none">
+
+                <!-- Background Glow Layer -->
+                <div
+                    class="absolute inset-0 rounded-full bg-gradient-to-tr from-pink-300/40 via-amber-200/40 to-yellow-200/40 blur-2xl animate-pulse">
+                </div>
+
+                <!-- Dynamic Decorative SVG Cake -->
+                <div id="cake-btn"
+                    class="cake-btn w-full h-full relative z-10 flex items-center justify-center drop-shadow-2xl">
+                    <svg viewBox="0 0 200 200" class="w-full h-full filter drop-shadow-lg">
+                        <!-- Plate -->
+                        <ellipse cx="100" cy="170" rx="90" ry="20" fill="#e2e8f0" />
+                        <ellipse cx="100" cy="167" rx="85" ry="17" fill="#ffffff" />
+
+                        <!-- Bottom Layer (Base Queque) -->
+                        <path d="M 30,120 Q 100,140 170,120 L 170,155 Q 100,175 30,155 Z" fill="#8d5b4c" />
+                        <path d="M 30,120 Q 100,140 170,120 L 170,130 Q 100,150 30,130 Z" fill="#6d4236" />
+
+                        <!-- Middle Frosting Cream -->
+                        <path d="M 28,120 Q 100,140 172,120 Q 170,126 100,144 Q 30,126 28,120 Z" fill="#fff3b0" />
+
+                        <!-- Top Layer Cake -->
+                        <path d="M 40,75 Q 100,95 160,75 L 160,120 Q 100,140 40,120 Z" fill="#a36856" />
+
+                        <!-- Drips Glaze / Frosting Top -->
+                        <path
+                            d="M 40,75 C 50,90 60,70 70,88 C 85,100 95,75 110,92 C 125,70 135,90 145,75 C 155,85 160,75 160,75 Q 100,95 40,75 Z"
+                            fill="#ffb5a7" />
+                        <ellipse cx="100" cy="75" rx="60" ry="20" fill="#fcd5ce" />
+
+                        <!-- Sprinkles / Chispas -->
+                        <rect x="70" y="70" width="6" height="3" rx="1.5" fill="#f94144" transform="rotate(15 70 70)" />
+                        <rect x="110" y="72" width="6" height="3" rx="1.5" fill="#90be6d"
+                            transform="rotate(-20 110 72)" />
+                        <rect x="90" y="80" width="6" height="3" rx="1.5" fill="#f9c74f" transform="rotate(45 90 80)" />
+                        <rect x="130" y="76" width="6" height="3" rx="1.5" fill="#277da1"
+                            transform="rotate(-10 130 76)" />
+                        <rect x="60" y="78" width="6" height="3" rx="1.5" fill="#f8961e" transform="rotate(30 60 78)" />
+
+                        <!-- Topping Cherry -->
+                        <circle cx="100" cy="52" r="12" fill="#d90429" />
+                        <circle cx="96" cy="48" r="3" fill="#ff8fa3" />
+                        <!-- Stem -->
+                        <path d="M 100,40 Q 112,25 118,22" stroke="#582f0e" stroke-width="2.5" fill="none"
+                            stroke-linecap="round" />
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Hint text -->
+            <p class="text-xs text-amber-800/70 text-center font-medium">¡Haz clic sobre el queque para horneados
+                instantáneos!</p>
+        </section>
+
+        <!-- RIGHT COLUMN: SHOP & MINIGAMES TABS (Lg: 7 cols) -->
+        <section
+            class="lg:col-span-7 bg-white/80 backdrop-blur-md rounded-3xl p-4 md:p-6 shadow-xl border border-pink-100 flex flex-col">
+
+            <!-- NAVIGATION TABS -->
+            <nav class="flex border-b border-pink-200 mb-4 gap-2 overflow-x-auto pb-2">
+                <button id="tab-shop-btn" onclick="switchTab('shop')"
+                    class="tab-btn px-4 py-2 rounded-2xl font-bold text-sm transition bg-gradient-to-r from-pink-500 to-rose-400 text-white shadow-sm flex items-center gap-1.5">
+                    🛒 Tienda de Queques
+                </button>
+                <button id="tab-minigames-btn" onclick="switchTab('minigames')"
+                    class="tab-btn px-4 py-2 rounded-2xl font-bold text-sm transition bg-pink-100 text-pink-900 hover:bg-pink-200 flex items-center gap-1.5">
+                    🎯 Minijuegos
+                </button>
+                <button id="tab-achievements-btn" onclick="switchTab('achievements')"
+                    class="tab-btn px-4 py-2 rounded-2xl font-bold text-sm transition bg-pink-100 text-pink-900 hover:bg-pink-200 flex items-center gap-1.5">
+                    🏆 Logros
+                </button>
+                <button id="tab-stats-btn" onclick="switchTab('stats')"
+                    class="tab-btn px-4 py-2 rounded-2xl font-bold text-sm transition bg-pink-100 text-pink-900 hover:bg-pink-200 flex items-center gap-1.5">
+                    📊 Stats
+                </button>
+            </nav>
+
+            <!-- TAB CONTENT PANELS -->
+
+            <!-- TAB 1: SHOP (MEJORAS Y QUEQUES) -->
+            <div id="tab-shop" class="tab-content flex-1 overflow-y-auto max-h-[500px] pr-1 space-y-4">
+
+                <!-- Section: Clic Upgrades -->
+                <div>
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-pink-800 mb-2 flex items-center gap-1">
+                        <span>✨</span> Mejoras de Clic
+                    </h3>
+                    <div id="click-upgrades-container" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <!-- Dynamic Click Upgrades rendered by JS -->
+                    </div>
+                </div>
+
+                <!-- Section: Queques Pasivos (Q/s) -->
+                <div class="pt-2">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-pink-800 mb-2 flex items-center gap-1">
+                        <span>🧁</span> Tipos de Queques (Ingresos Pasivos)
+                    </h3>
+                    <div id="passive-upgrades-container" class="space-y-3">
+                        <!-- Dynamic Passive Queques rendered by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: MINIJUEGOS -->
+            <div id="tab-minigames" class="tab-content hidden flex-1 overflow-y-auto space-y-6">
+
+                <!-- Minijuego 1: Horno Perfecto -->
+                <div
+                    class="bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200 p-5 rounded-2xl shadow-sm">
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="text-lg font-bold text-amber-900 flex items-center gap-2">
+                            <span>🔥</span> Minijuego 1: Horno Perfecto
+                        </h3>
+                        <span id="oven-status-badge"
+                            class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full">¡Listo!</span>
+                    </div>
+                    <p class="text-xs text-amber-800 mb-4">
+                        Presiona el botón cuando la aguja indicadora esté dentro de la <strong>zona verde</strong> para
+                        conseguir un <strong>multiplicador x5 por 20 segundos</strong>.
+                    </p>
+
+                    <!-- Horno Bar Canvas Container -->
+                    <div
+                        class="relative w-full h-8 bg-amber-950/20 rounded-full overflow-hidden border-2 border-amber-800/30 mb-4 shadow-inner">
+                        <!-- Green Zone -->
+                        <div id="oven-green-zone"
+                            class="absolute top-0 bottom-0 bg-emerald-400/80 border-x-2 border-emerald-600"
+                            style="left: 42%; width: 16%;"></div>
+                        <!-- Yellow Target Region -->
+                        <div id="oven-yellow-zone" class="absolute top-0 bottom-0 bg-amber-300/40"
+                            style="left: 32%; width: 36%;"></div>
+                        <!-- Needle Marker -->
+                        <div id="oven-needle"
+                            class="absolute top-0 bottom-0 w-3 bg-red-600 shadow-md transform -translate-x-1/2 transition-none">
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <button id="oven-stop-btn" onclick="checkOvenTiming()"
+                            class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold px-6 py-2.5 rounded-xl shadow transition transform active:scale-95 text-sm">
+                            ¡DETENER EL HORNO!
+                        </button>
+                        <div id="oven-result-text" class="text-sm font-bold text-amber-900"></div>
+                    </div>
+                </div>
+
+                <!-- Minijuego 2: Queque Dorado Info -->
+                <div
+                    class="bg-gradient-to-br from-yellow-50 to-amber-100 border border-yellow-300 p-5 rounded-2xl shadow-sm">
+                    <h3 class="text-lg font-bold text-amber-950 flex items-center gap-2 mb-1">
+                        <span>⭐</span> Minijuego 2: Queque Dorado Sorpresa
+                    </h3>
+                    <p class="text-xs text-amber-800 mb-3">
+                        De forma aleatoria aparecerá volando un <strong>Queque Dorado</strong> por la pantalla. ¡Haz
+                        clic sobre él rápidamente antes de que desaparezca para ganar un botín enorme de Queques!
+                    </p>
+                    <div class="flex items-center gap-3 bg-white/60 p-3 rounded-xl border border-yellow-200">
+                        <div class="text-3xl animate-bounce">🎂✨</div>
+                        <div class="text-xs">
+                            <p class="font-bold text-amber-900">Estado de aparición:</p>
+                            <p id="golden-status-text" class="text-amber-700">Buscando receta dorada...</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- TAB 3: LOGROS -->
+            <div id="tab-achievements" class="tab-content hidden flex-1 overflow-y-auto max-h-[500px] pr-1 space-y-3">
+                <p class="text-xs text-pink-900 font-medium mb-2">Desbloquea logros para demostrar tu maestría
+                    repostera:</p>
+                <div id="achievements-container" class="space-y-2.5">
+                    <!-- Rendered dynamically -->
+                </div>
+            </div>
+
+            <!-- TAB 4: ESTADÍSTICAS & AJUSTES -->
+            <div id="tab-stats" class="tab-content hidden flex-1 overflow-y-auto space-y-4">
+                <div class="bg-pink-50/70 border border-pink-200 p-4 rounded-2xl space-y-2 text-xs">
+                    <h3 class="font-bold text-sm text-pink-950 border-b border-pink-200 pb-1 mb-2">Estadísticas de la
+                        Pastelería</h3>
+                    <div class="flex justify-between"><span>Queques totales acumulados:</span> <strong
+                            id="stat-total-queques">0</strong></div>
+                    <div class="flex justify-between"><span>Total de Clics dados:</span> <strong
+                            id="stat-total-clicks">0</strong></div>
+                    <div class="flex justify-between"><span>Queques Dorados atrapados:</span> <strong
+                            id="stat-golden-clicks">0</strong></div>
+                    <div class="flex justify-between"><span>Horneados Perfectos:</span> <strong
+                            id="stat-perfect-ovens">0</strong></div>
+                    <div class="flex justify-between"><span>Tiempo jugado:</span> <strong
+                            id="stat-time-played">0s</strong></div>
+                </div>
+
+                <div class="bg-amber-50/70 border border-amber-200 p-4 rounded-2xl space-y-3">
+                    <h3 class="font-bold text-sm text-amber-950">Gestión de Partida</h3>
+                    <div class="flex gap-2">
+                        <button onclick="saveGame(true)"
+                            class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2 rounded-xl text-xs transition">
+                            💾 Guardar Partida
+                        </button>
+                        <button onclick="resetGameModal()"
+                            class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl text-xs transition">
+                            🗑️ Reiniciar Progreso
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-pink-950 text-pink-200 text-center text-xs py-3 mt-4 border-t border-pink-800">
+        <p>Queque Clicker © 2026 - ¡El juego más dulce e incremental!</p>
+    </footer>
+
+    <!-- FLOATING GOLDEN CAKE (HIDDEN BY DEFAULT) -->
+    <div id="golden-cake" onclick="clickGoldenCake()"
+        class="hidden fixed z-50 cursor-pointer golden-cake-anim filter drop-shadow-2xl transition hover:scale-110">
+        <div class="relative">
+            <div class="absolute -inset-2 bg-yellow-400 rounded-full blur-md opacity-80 animate-ping"></div>
+            <div class="text-6xl relative z-10">🎂✨</div>
+        </div>
+    </div>
+
+    <!-- CUSTOM NOTIFICATION TOAST -->
+    <div id="toast"
+        class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none bg-amber-900 text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-amber-700">
+        <span id="toast-icon" class="text-2xl">🎉</span>
+        <div>
+            <h4 id="toast-title" class="font-bold text-sm text-yellow-300">¡Notificación!</h4>
+            <p id="toast-msg" class="text-xs text-amber-100">Mensaje aquí</p>
+        </div>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN DE REINICIO -->
+    <div id="modal-reset"
+        class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl p-6 max-w-sm w-full text-center space-y-4 shadow-2xl border border-pink-200">
+            <div class="text-4xl">⚠️</div>
+            <h3 class="text-xl font-bold text-amber-950">¿Reiniciar tu Pastelería?</h3>
+            <p class="text-xs text-amber-800">Perderás todos tus queques, mejoras y logros acumulados. Esta acción no se
+                puede deshacer.</p>
+            <div class="flex gap-2 pt-2">
+                <button onclick="closeModal()"
+                    class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 rounded-xl text-xs transition">Cancelar</button>
+                <button onclick="confirmResetGame()"
+                    class="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 rounded-xl text-xs transition">Sí,
+                    Reiniciar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GAME LOGIC SCRIPT -->
+    <script>
+        /* ==========================================
+            GAME STATE DATA
+        ========================================== */
+        let gameState = {
+            queques: 0,
+            totalQueques: 0,
+            totalClicks: 0,
+            goldenClicks: 0,
+            perfectOvens: 0,
+            timePlayed: 0,
+            clickPower: 1,
+            passiveQPS: 0,
+            activeMultiplier: 1,
+            multiplierTimer: 0,
+
+            // Upgrades purchased count
+            clickUpgrades: {},
+            passiveUpgrades: {},
+            achievementsUnlocked: {}
+        };
+
+        let audioMuted = false;
+
+        /* ==========================================
+            DEFINICIÓN DE MEJORAS Y QUEQUES
+        ========================================== */
+        const CLICK_UPGRADES_DATA = [
+            { id: 'c1', name: 'Espátula de Vainilla', icon: '🥄', baseCost: 15, power: 1, desc: '+1 Queque por clic' },
+            { id: 'c2', name: 'Batidora de Chocolate', icon: '🥣', baseCost: 100, power: 5, desc: '+5 Queques por clic' },
+            { id: 'c3', name: 'Inyector de Mermelada', icon: '💉', baseCost: 1100, power: 25, desc: '+25 Queques por clic' },
+            { id: 'c4', name: 'Rodillo de Azúcar', icon: '🥖', baseCost: 12000, power: 120, desc: '+120 Queques por clic' },
+            { id: 'c5', name: 'Molde Mágico Dorado', icon: '🔱', baseCost: 130000, power: 750, desc: '+750 Queques por clic' },
+            { id: 'c6', name: 'Varita Repostera Alquímica', icon: '🪄', baseCost: 1400000, power: 4500, desc: '+4,500 Queques por clic' }
+        ];
+
+        const PASSIVE_UPGRADES_DATA = [
+            { id: 'p1', name: 'Queque de Vainilla Tradicional', icon: '🧁', baseCost: 20, qps: 1, desc: 'Un clásico esponjoso que genera 1 Q/s.' },
+            { id: 'p2', name: 'Queque de Chocolate Fudge', icon: '🍫', baseCost: 120, qps: 5, desc: 'Bañado en chocolate rico, genera 5 Q/s.' },
+            { id: 'p3', name: 'Queque Marmolado Glaseado', icon: '🥮', baseCost: 1200, qps: 30, desc: 'Mezcla perfecta de aromas, genera 30 Q/s.' },
+            { id: 'p4', name: 'Queque de Limón y Merengue', icon: '🍋', baseCost: 14000, qps: 180, desc: 'Toque ácido y dulce, genera 180 Q/s.' },
+            { id: 'p5', name: 'Queque de Zanahoria y Nuez', icon: '🥕', baseCost: 150000, qps: 1100, desc: 'Receta casera saludable, genera 1,100 Q/s.' },
+            { id: 'p6', name: 'Queque Selva Negra Imperial', icon: '🍒', baseCost: 1600000, qps: 7500, desc: 'Cerezas y crema de alta repostería, genera 7,500 Q/s.' },
+            { id: 'p7', name: 'Queque Red Velvet Volcánico', icon: '🎂', baseCost: 20000000, qps: 45000, desc: 'Terciopelo rojo con corazón fundido, genera 45,000 Q/s.' },
+            { id: 'p8', name: 'Queque Cósmico de Estrellas', icon: '🌌', baseCost: 250000000, qps: 300000, desc: 'Horneado con polvo de estrellas, genera 300,000 Q/s.' }
+        ];
+
+        const ACHIEVEMENTS_DATA = [
+            { id: 'a1', name: 'Primer Horneado', icon: '👩‍🍳', req: state => state.totalClicks >= 1, desc: 'Haz tu primer clic en el queque.' },
+            { id: 'a2', name: 'Repostero Aficionado', icon: '🧁', req: state => state.totalQueques >= 100, desc: 'Acumula 100 Queques en total.' },
+            { id: 'a3', name: 'Panadería Famosa', icon: '🏬', req: state => state.totalQueques >= 10000, desc: 'Acumula 10,000 Queques.' },
+            { id: 'a4', name: 'Cazador Dorado', icon: '⭐', req: state => state.goldenClicks >= 1, desc: 'Atrapa tu primer Queque Dorado.' },
+            { id: 'a5', name: 'Maestro del Horno', icon: '🔥', req: state => state.perfectOvens >= 3, desc: 'Consigue 3 horneados perfectos en el minijuego.' },
+            { id: 'a6', name: 'Imperio del Sabor', icon: '👑', req: state => state.totalQueques >= 1000000, desc: 'Acumula 1,000,000 de Queques.' }
+        ];
+
+        /* ==========================================
+            WEB AUDIO SYNTHESIZER (NO EXTERNAL SOUNDS)
+        ========================================== */
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+            }
+            playClick() {
+                if (audioMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(350, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(700, this.ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.08);
+                } catch (e) { }
+            }
+            playBuy() {
+                if (audioMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, this.ctx.currentTime); // C5
+                    osc.frequency.setValueAtTime(659.25, this.ctx.currentTime + 0.08); // E5
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.2);
+                } catch (e) { }
+            }
+            playGolden() {
+                if (audioMuted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const notes = [523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.06);
+                        gain.gain.setValueAtTime(0.12, this.ctx.currentTime + idx * 0.06);
+                        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + idx * 0.06 + 0.15);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(this.ctx.currentTime + idx * 0.06);
+                        osc.stop(this.ctx.currentTime + idx * 0.06 + 0.15);
+                    });
+                } catch (e) { }
+            }
+        }
+        const sounds = new SoundEngine();
+
+        function toggleAudio() {
+            audioMuted = !audioMuted;
+            document.getElementById('sound-icon').innerText = audioMuted ? '🔇' : '🔊';
+            document.getElementById('sound-text').innerText = audioMuted ? 'Sonido: OFF' : 'Sonido: ON';
+        }
+
+        /* ==========================================
+            HELPERS & FORMATTING
+        ========================================== */
+        function formatNumber(num) {
+            if (num < 1000) return Math.floor(num).toLocaleString('es-ES');
+            const suffixes = ['', 'K', 'M', 'B', 'T', 'Q'];
+            const i = Math.floor(Math.log10(num) / 3);
+            if (i >= suffixes.length) return num.toExponential(2);
+            const formatted = (num / Math.pow(10, i * 3)).toFixed(2);
+            return `${formatted} ${suffixes[i]}`;
+        }
+
+        function getUpgradeCost(baseCost, count) {
+            return Math.floor(baseCost * Math.pow(1.15, count));
+        }
+
+        /* ==========================================
+            DOM CORE ELEMENTS & INITIALIZATION
+        ========================================== */
+        const quequeCountEl = document.getElementById('queque-count');
+        const qpsCountEl = document.getElementById('qps-count');
+        const qpcCountEl = document.getElementById('qpc-count');
+        const cakeArea = document.getElementById('cake-area');
+        const cakeBtn = document.getElementById('cake-btn');
+
+        window.onload = function () {
+            loadGame();
+            renderShop();
+            renderAchievements();
+            updateUI();
+            startMainLoop();
+            initOvenMinigame();
+            scheduleGoldenCake();
+        };
+
+        /* ==========================================
+            CLICK ACTION & VISUAL EFFECTS
+        ========================================== */
+        cakeBtn.addEventListener('mousedown', (e) => triggerCakeClick(e));
+        cakeBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            triggerCakeClick(touch);
+        }, { passive: false });
+
+        function triggerCakeClick(e) {
+            sounds.playClick();
+
+            // Bounce / Squish effect
+            cakeBtn.classList.remove('clicked');
+            void cakeBtn.offsetWidth; // trigger reflow
+            cakeBtn.classList.add('clicked');
+            setTimeout(() => cakeBtn.classList.remove('clicked'), 100);
+
+            // Coordinates relative to cake area container
+            const rect = cakeArea.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // 1. Create Radial Ripple Effect
+            createRipple(x, y);
+
+            // 2. Calculate Click Earned Queques
+            const earned = gameState.clickPower * gameState.activeMultiplier;
+            gameState.queques += earned;
+            gameState.totalQueques += earned;
+            gameState.totalClicks++;
+
+            // 3. Floating Text Effect
+            createFloatingText(x, y, `+${formatNumber(earned)}`, gameState.activeMultiplier > 1);
+
+            updateUI();
+            checkAchievements();
+        }
+
+        function createRipple(x, y) {
+            const ripple = document.createElement('div');
+            ripple.className = 'ripple-effect';
+            ripple.style.left = `${x}px`;
+            ripple.style.top = `${y}px`;
+            ripple.style.width = '30px';
+            ripple.style.height = '30px';
+            cakeArea.appendChild(ripple);
+
+            setTimeout(() => ripple.remove(), 600);
+        }
+
+        function createFloatingText(x, y, text, isCrit) {
+            const el = document.createElement('div');
+            el.className = `float-text ${isCrit ? 'text-yellow-500 text-2xl drop-shadow' : 'text-amber-900 text-lg'}`;
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            el.innerText = text;
+            cakeArea.appendChild(el);
+
+            setTimeout(() => el.remove(), 850);
+        }
+
+        /* ==========================================
+            UPGRADES & SHOP SYSTEM
+        ========================================== */
+        function recalculateStats() {
+            // Calculate Click Power
+            let baseClick = 1;
+            CLICK_UPGRADES_DATA.forEach(u => {
+                const count = gameState.clickUpgrades[u.id] || 0;
+                baseClick += u.power * count;
+            });
+            gameState.clickPower = baseClick;
+
+            // Calculate Passive QPS
+            let baseQps = 0;
+            PASSIVE_UPGRADES_DATA.forEach(u => {
+                const count = gameState.passiveUpgrades[u.id] || 0;
+                baseQps += u.qps * count;
+            });
+            gameState.passiveQPS = baseQps;
+        }
+
+        function renderShop() {
+            // Render Click Upgrades
+            const clickContainer = document.getElementById('click-upgrades-container');
+            clickContainer.innerHTML = '';
+
+            CLICK_UPGRADES_DATA.forEach(u => {
+                const count = gameState.clickUpgrades[u.id] || 0;
+                const cost = getUpgradeCost(u.baseCost, count);
+
+                const card = document.createElement('div');
+                card.id = `upgrade-card-${u.id}`;
+                card.className = 'bg-white border border-pink-100 rounded-2xl p-3 shadow-sm hover:shadow-md transition flex items-center justify-between gap-2';
+                card.innerHTML = `
+            <div class="flex items-center gap-2.5">
+            <div class="text-2xl p-2 bg-pink-50 rounded-xl">${u.icon}</div>
+            <div>
+                <h4 class="font-bold text-xs text-amber-950">${u.name}</h4>
+                <p class="text-[10px] text-amber-800/70">${u.desc}</p>
+                <p class="text-[11px] font-bold text-pink-700 mt-0.5">Poseídos: <span class="text-amber-950 font-extrabold">${count}</span></p>
+            </div>
+            </div>
+            <button id="buy-btn-${u.id}" onclick="buyClickUpgrade('${u.id}')" class="buy-btn px-3 py-1.5 rounded-xl font-bold text-xs bg-pink-500 hover:bg-pink-600 text-white shadow transition disabled:opacity-40 disabled:cursor-not-allowed">
+            🧁 ${formatNumber(cost)}
+            </button>
+        `;
+                clickContainer.appendChild(card);
+            });
+
+            // Render Passive Upgrades
+            const passiveContainer = document.getElementById('passive-upgrades-container');
+            passiveContainer.innerHTML = '';
+
+            PASSIVE_UPGRADES_DATA.forEach(u => {
+                const count = gameState.passiveUpgrades[u.id] || 0;
+                const cost = getUpgradeCost(u.baseCost, count);
+
+                const card = document.createElement('div');
+                card.id = `upgrade-card-${u.id}`;
+                card.className = 'bg-white border border-pink-100 rounded-2xl p-3.5 shadow-sm hover:shadow-md transition flex items-center justify-between gap-3';
+                card.innerHTML = `
+            <div class="flex items-center gap-3">
+            <div class="text-3xl p-2.5 bg-amber-50 rounded-2xl">${u.icon}</div>
+            <div>
+                <h4 class="font-bold text-sm text-amber-950">${u.name}</h4>
+                <p class="text-xs text-amber-800/70">${u.desc}</p>
+                <p class="text-xs font-bold text-pink-700 mt-1">Nivel / Cantidad: <span class="text-amber-950 font-extrabold text-sm">${count}</span></p>
+            </div>
+            </div>
+            <button id="buy-btn-${u.id}" onclick="buyPassiveUpgrade('${u.id}')" class="buy-btn px-4 py-2 rounded-xl font-bold text-xs bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white shadow-md transition disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap">
+            🧁 ${formatNumber(cost)}
+            </button>
+        `;
+                passiveContainer.appendChild(card);
+            });
+        }
+
+        function buyClickUpgrade(id) {
+            const u = CLICK_UPGRADES_DATA.find(x => x.id === id);
+            const count = gameState.clickUpgrades[id] || 0;
+            const cost = getUpgradeCost(u.baseCost, count);
+
+            if (gameState.queques >= cost) {
+                gameState.queques -= cost;
+                gameState.clickUpgrades[id] = count + 1;
+                sounds.playBuy();
+                recalculateStats();
+                renderShop();
+                updateUI();
+                checkAchievements();
+            }
+        }
+
+        function buyPassiveUpgrade(id) {
+            const u = PASSIVE_UPGRADES_DATA.find(x => x.id === id);
+            const count = gameState.passiveUpgrades[id] || 0;
+            const cost = getUpgradeCost(u.baseCost, count);
+
+            if (gameState.queques >= cost) {
+                gameState.queques -= cost;
+                gameState.passiveUpgrades[id] = count + 1;
+                sounds.playBuy();
+                recalculateStats();
+                renderShop();
+                updateUI();
+                checkAchievements();
+            }
+        }
+
+        /* ==========================================
+            MINIJUEGO 1: HORNO PERFECTO
+        ========================================== */
+        let ovenPos = 0;
+        let ovenSpeed = 1.8;
+        let ovenDirection = 1;
+        let ovenAnimFrame = null;
+        let ovenCooldown = false;
+
+        function initOvenMinigame() {
+            const needle = document.getElementById('oven-needle');
+
+            function updateNeedle() {
+                if (!ovenCooldown) {
+                    ovenPos += ovenSpeed * ovenDirection;
+                    if (ovenPos >= 100) {
+                        ovenPos = 100;
+                        ovenDirection = -1;
+                    } else if (ovenPos <= 0) {
+                        ovenPos = 0;
+                        ovenDirection = 1;
+                    }
+                    needle.style.left = `${ovenPos}%`;
+                }
+                ovenAnimFrame = requestAnimationFrame(updateNeedle);
+            }
+            ovenAnimFrame = requestAnimationFrame(updateNeedle);
+        }
+
+        function checkOvenTiming() {
+            if (ovenCooldown) return;
+
+            const stopBtn = document.getElementById('oven-stop-btn');
+            const resultText = document.getElementById('oven-result-text');
+            const statusBadge = document.getElementById('oven-status-badge');
+
+            // Green zone: 42% to 58%
+            if (ovenPos >= 42 && ovenPos <= 58) {
+                // PERFECT!
+                resultText.className = "text-sm font-extrabold text-emerald-600 animate-bounce";
+                resultText.innerText = "¡PERFECTO! 🔥 Multiplicador x5 Activado";
+                triggerMultiplier(5, 20);
+                gameState.perfectOvens++;
+                sounds.playGolden();
+                showToast("🔥 ¡Horno Perfecto!", "¡Has conseguido x5 Queques por 20 segundos!");
+            } else if (ovenPos >= 32 && ovenPos <= 68) {
+                // GOOD
+                resultText.className = "text-sm font-bold text-amber-600";
+                resultText.innerText = "¡BUEN HORNEADO! Multiplicador x2 Activado";
+                triggerMultiplier(2, 12);
+                sounds.playBuy();
+            } else {
+                // MISSED / BURNT
+                resultText.className = "text-sm font-bold text-rose-600";
+                resultText.innerText = "¡SE QUEMÓ! Inténtalo de nuevo en breve.";
+            }
+
+            // Enter Cooldown
+            ovenCooldown = true;
+            stopBtn.disabled = true;
+            stopBtn.classList.add('opacity-50');
+            statusBadge.innerText = 'Enfriando horno...';
+            statusBadge.className = 'text-xs bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-full';
+
+            let cdSeconds = 15;
+            const cdInterval = setInterval(() => {
+                cdSeconds--;
+                if (cdSeconds <= 0) {
+                    clearInterval(cdInterval);
+                    ovenCooldown = false;
+                    stopBtn.disabled = false;
+                    stopBtn.classList.remove('opacity-50');
+                    statusBadge.innerText = '¡Listo!';
+                    statusBadge.className = 'text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-full';
+                    resultText.innerText = '';
+                }
+            }, 1000);
+
+            checkAchievements();
+        }
+
+        function triggerMultiplier(mult, durationSec) {
+            gameState.activeMultiplier = mult;
+            gameState.multiplierTimer = durationSec;
+
+            const badge = document.getElementById('multiplier-badge');
+            document.getElementById('mult-val').innerText = `x${mult}`;
+            document.getElementById('mult-timer').innerText = durationSec;
+            badge.classList.remove('hidden');
+        }
+
+        /* ==========================================
+            MINIJUEGO 2: QUEQUE DORADO SPANWER
+        ========================================== */
+        let goldenCakeTimer = null;
+
+        function scheduleGoldenCake() {
+            // Spawn random Golden Cake between 30 and 70 seconds
+            const randomDelay = Math.floor(Math.random() * 40000) + 30000;
+            goldenCakeTimer = setTimeout(spawnGoldenCake, randomDelay);
+        }
+
+        function spawnGoldenCake() {
+            const goldenEl = document.getElementById('golden-cake');
+            const statusText = document.getElementById('golden-status-text');
+
+            // Random position on screen
+            const maxX = window.innerWidth - 100;
+            const maxY = window.innerHeight - 100;
+            const randX = Math.floor(Math.random() * maxX);
+            const randY = Math.floor(Math.random() * maxY);
+
+            goldenEl.style.left = `${randX}px`;
+            goldenEl.style.top = `${randY}px`;
+            goldenEl.classList.remove('hidden');
+
+            statusText.innerText = "✨ ¡UN QUEQUE DORADO HA APARECIDO!";
+            statusText.className = "text-amber-700 font-bold animate-pulse";
+
+            // Hide after 8 seconds if not clicked
+            setTimeout(() => {
+                if (!goldenEl.classList.contains('hidden')) {
+                    goldenEl.classList.add('hidden');
+                    statusText.innerText = "Buscando receta dorada...";
+                    statusText.className = "text-amber-700";
+                    scheduleGoldenCake();
+                }
+            }, 8000);
+        }
+
+        function clickGoldenCake() {
+            const goldenEl = document.getElementById('golden-cake');
+            goldenEl.classList.add('hidden');
+
+            gameState.goldenClicks++;
+            sounds.playGolden();
+
+            // Golden reward: 15% of current total + 30 seconds of QPS (min 500)
+            const bonus = Math.max(500, Math.floor(gameState.queques * 0.15 + gameState.passiveQPS * 30));
+            gameState.queques += bonus;
+            gameState.totalQueques += bonus;
+
+            showToast("⭐ ¡Queque Dorado Atrapado!", `+${formatNumber(bonus)} Queques añadidos a tu pastelería.`);
+
+            document.getElementById('golden-status-text').innerText = "Buscando receta dorada...";
+            document.getElementById('golden-status-text').className = "text-amber-700";
+
+            updateUI();
+            checkAchievements();
+            scheduleGoldenCake();
+        }
+
+        /* ==========================================
+            LOGROS (ACHIEVEMENTS)
+        ========================================== */
+        function renderAchievements() {
+            const container = document.getElementById('achievements-container');
+            container.innerHTML = '';
+
+            ACHIEVEMENTS_DATA.forEach(a => {
+                const unlocked = gameState.achievementsUnlocked[a.id] || false;
+
+                const card = document.createElement('div');
+                card.className = `p-3.5 rounded-2xl border flex items-center gap-3 transition ${unlocked
+                    ? 'bg-amber-100/80 border-amber-300 shadow-sm'
+                    : 'bg-gray-100/60 border-gray-200 opacity-60'
+                    }`;
+                card.innerHTML = `
+            <div class="text-3xl p-2 rounded-xl ${unlocked ? 'bg-amber-200' : 'bg-gray-200'}">${a.icon}</div>
+            <div class="flex-1">
+            <div class="flex items-center gap-2">
+                <h4 class="font-bold text-sm text-amber-950">${a.name}</h4>
+                ${unlocked ? '<span class="text-[10px] bg-emerald-600 text-white font-bold px-2 py-0.5 rounded-full">¡Desbloqueado!</span>' : ''}
+            </div>
+            <p class="text-xs text-amber-900/80">${a.desc}</p>
+            </div>
+        `;
+                container.appendChild(card);
+            });
+        }
+
+        function checkAchievements() {
+            ACHIEVEMENTS_DATA.forEach(a => {
+                if (!gameState.achievementsUnlocked[a.id] && a.req(gameState)) {
+                    gameState.achievementsUnlocked[a.id] = true;
+                    sounds.playGolden();
+                    showToast(`🏆 ¡Logro Desbloqueado!`, a.name);
+                    renderAchievements();
+                }
+            });
+        }
+
+        /* ==========================================
+            MAIN GAME LOOP (PASSIVE INCOME & TIMERS)
+        ========================================== */
+        function startMainLoop() {
+            setInterval(() => {
+                // Multiplier Timer Tick
+                if (gameState.multiplierTimer > 0) {
+                    gameState.multiplierTimer--;
+                    document.getElementById('mult-timer').innerText = gameState.multiplierTimer;
+                    if (gameState.multiplierTimer <= 0) {
+                        gameState.activeMultiplier = 1;
+                        document.getElementById('multiplier-badge').classList.add('hidden');
+                    }
+                }
+
+                // Passive QPS (distributed into 10 ticks per sec for smooth counting)
+                if (gameState.passiveQPS > 0) {
+                    const passiveGain = (gameState.passiveQPS * gameState.activeMultiplier) / 10;
+                    gameState.queques += passiveGain;
+                    gameState.totalQueques += passiveGain;
+                }
+
+                gameState.timePlayed += 0.1;
+                updateUI();
+            }, 100);
+
+            // Auto save every 10 seconds
+            setInterval(() => saveGame(false), 10000);
+        }
+
+        /* ==========================================
+            UI UPDATER
+        ========================================== */
+        function updateUI() {
+            quequeCountEl.innerText = formatNumber(gameState.queques);
+            qpsCountEl.innerText = formatNumber(gameState.passiveQPS * gameState.activeMultiplier);
+            qpcCountEl.innerText = formatNumber(gameState.clickPower * gameState.activeMultiplier);
+
+            // Stats tab
+            document.getElementById('stat-total-queques').innerText = formatNumber(gameState.totalQueques);
+            document.getElementById('stat-total-clicks').innerText = formatNumber(gameState.totalClicks);
+            document.getElementById('stat-golden-clicks').innerText = formatNumber(gameState.goldenClicks);
+            document.getElementById('stat-perfect-ovens').innerText = formatNumber(gameState.perfectOvens);
+            document.getElementById('stat-time-played').innerText = `${Math.floor(gameState.timePlayed)}s`;
+
+            // Update shop buy buttons disable state
+            CLICK_UPGRADES_DATA.forEach(u => {
+                const count = gameState.clickUpgrades[u.id] || 0;
+                const cost = getUpgradeCost(u.baseCost, count);
+                const btn = document.getElementById(`buy-btn-${u.id}`);
+                if (btn) btn.disabled = gameState.queques < cost;
+            });
+
+            PASSIVE_UPGRADES_DATA.forEach(u => {
+                const count = gameState.passiveUpgrades[u.id] || 0;
+                const cost = getUpgradeCost(u.baseCost, count);
+                const btn = document.getElementById(`buy-btn-${u.id}`);
+                if (btn) btn.disabled = gameState.queques < cost;
+            });
+        }
+
+        /* ==========================================
+            TAB SWITCHING
+        ========================================== */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.className = 'tab-btn px-4 py-2 rounded-2xl font-bold text-sm transition bg-pink-100 text-pink-900 hover:bg-pink-200 flex items-center gap-1.5';
+            });
+
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabId}-btn`);
+            activeBtn.className = 'tab-btn px-4 py-2 rounded-2xl font-bold text-sm transition bg-gradient-to-r from-pink-500 to-rose-400 text-white shadow-sm flex items-center gap-1.5';
+        }
+
+        /* ==========================================
+            SAVE & LOAD SYSTEM
+        ========================================== */
+        function saveGame(showNotification = true) {
+            try {
+                localStorage.setItem('queque_clicker_save', JSON.stringify(gameState));
+                if (showNotification) {
+                    showToast('💾 Partida Guardada', 'Tu avance está a salvo en el navegador.');
+                }
+            } catch (e) { }
+        }
+
+        function loadGame() {
+            try {
+                const saved = localStorage.getItem('queque_clicker_save');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    gameState = { ...gameState, ...parsed };
+                    recalculateStats();
+                }
+            } catch (e) { }
+        }
+
+        function resetGameModal() {
+            document.getElementById('modal-reset').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('modal-reset').classList.add('hidden');
+        }
+
+        function confirmResetGame() {
+            localStorage.removeItem('queque_clicker_save');
+            location.reload();
+        }
+
+        /* ==========================================
+            TOAST NOTIFICATION SYSTEM
+        ========================================== */
+        function showToast(title, message) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-title').innerText = title;
+            document.getElementById('toast-msg').innerText = message;
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+    </script>
+</body>
+
+</html>
